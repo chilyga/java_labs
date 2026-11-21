@@ -1,9 +1,11 @@
 package edu.course.lab05;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -13,25 +15,29 @@ public final class SampleFileLoader {
     private static final String EXPECTED_HEADER =
             "id;label;source;featureCount;status";
 
-    public LoadResult load(Path path) {
-        List<String> lines;
-
-        try {
-            lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+    public LoadResult load(File file) {
+        List<String> lines = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(
+                        new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
+            }
         } catch (IOException | SecurityException cause) {
-            throw new DataLoadingException("Cannot read " + path, cause);
+            throw new DataLoadingException("Cannot read " + file, cause);
         }
 
         if (lines.isEmpty()) {
             throw new DataLoadingException(
-                    "Invalid file header: " + path,
+                    "Invalid file header: " + file,
                     new IllegalArgumentException("File is empty")
             );
         }
 
         if (!EXPECTED_HEADER.equals(lines.get(0).trim())) {
             throw new DataLoadingException(
-                    "Invalid file header: " + path,
+                    "Invalid file header: " + file,
                     new IllegalArgumentException("Unexpected header")
             );
         }
@@ -41,11 +47,9 @@ public final class SampleFileLoader {
 
         for (int i = 1; i < lines.size(); i++) {
             String line = lines.get(i);
-
             if (line.isBlank()) {
                 continue;
             }
-
             parseLine(line, i + 1, samples, errors);
         }
 
@@ -99,7 +103,6 @@ public final class SampleFileLoader {
         }
 
         Integer featureCount = null;
-
         if (featureCountText.isEmpty()) {
             errors.add(new ValidationError(
                     lineNumber, "featureCount", "Feature count cannot be empty"
@@ -108,7 +111,6 @@ public final class SampleFileLoader {
         } else {
             try {
                 featureCount = Integer.parseInt(featureCountText);
-
                 if (featureCount <= 0) {
                     errors.add(new ValidationError(
                             lineNumber,
@@ -128,7 +130,6 @@ public final class SampleFileLoader {
         }
 
         SampleStatus status = null;
-
         if (statusText.isEmpty()) {
             errors.add(new ValidationError(
                     lineNumber, "status", "Status cannot be empty"
